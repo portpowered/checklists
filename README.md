@@ -4,10 +4,10 @@ This repository contains checklist artifacts and a minimal factory setup for pro
 
 ## Project Checklist
 
-- [ ] Review [`factory/factory.json`](/C:/Users/andre/work/test/factory/factory.json) to confirm the workflow matches your intent.
-- [ ] Add incoming task files under [`factory/inputs/README.md`](/C:/Users/andre/work/test/factory/inputs/README.md)'s starter inbox path: `inputs/task/default/`.
-- [ ] Update the worker definition in [`factory/workers/processor/AGENTS.md`](/C:/Users/andre/work/test/factory/workers/processor/AGENTS.md) if the processor needs different instructions, tools, or timeout settings.
-- [ ] Update the workstation prompt in [`factory/workstations/process/AGENTS.md`](/C:/Users/andre/work/test/factory/workstations/process/AGENTS.md) if each work item needs additional context or formatting rules.
+- [ ] Review [`factory/factory.json`](factory/factory.json) to confirm the workflow matches your intent.
+- [ ] Add incoming task files under [`factory/inputs/README.md`](factory/inputs/README.md)'s starter inbox path: `inputs/task/default/`.
+- [ ] Update the worker definition in [`factory/workers/processor/AGENTS.md`](factory/workers/processor/AGENTS.md) if the processor needs different instructions, tools, or timeout settings.
+- [ ] Update the workstation prompt in [`factory/workstations/process/AGENTS.md`](factory/workstations/process/AGENTS.md) if each work item needs additional context or formatting rules.
 - [ ] Confirm the `task` lifecycle states are correct: `init`, `complete`, and `failed`.
 - [ ] Confirm the `process` workstation should route `task/init` work to the `processor` worker.
 - [ ] Start the local factory runtime that consumes the starter inbox and executes work items.

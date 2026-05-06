@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.validate_checklist import validate_contract_text, validate_example_text
+from scripts.validate_checklist import parse_findings_table, parse_review_record, validate_contract_text, validate_example_text
 
 
 VALID_CHECKLIST = """# Website Development Checklist (2026)
@@ -14,6 +14,7 @@ Checklist purpose.
 ## How To Use This Checklist
 
 - See examples/website-checklist-review-example.md for a completed sample review record.
+- See [examples/website-checklist-review-example.md](examples/website-checklist-review-example.md) for a completed sample review record.
 
 ## Review Output Template
 
@@ -60,7 +61,9 @@ VALID_EXAMPLE = """# Example Website Checklist Review
 | Checklist section | Status | Evidence summary |
 | --- | --- | --- |
 | 2.1 Build And Delivery Basics | Pass | build docs exist |
-| 2.2 Code Quality Controls | Needs Evidence | ci output missing |
+| 2.2 Code Quality Controls | Pass | ci output shows lint and typecheck |
+| 2.3 State And Data Handling | Needs Evidence | cache invalidation behavior is not documented |
+| 2.4 Styling System, Tailwind, And Design Tokens | Pass | shared tokens drive spacing and color decisions |
 
 ## Cross-Cutting Product Quality Findings
 
@@ -82,6 +85,11 @@ VALID_EXAMPLE = """# Example Website Checklist Review
 
 
 class ValidateChecklistTests(unittest.TestCase):
+    def test_review_record_parses_required_fields(self) -> None:
+        review_record = parse_review_record(VALID_EXAMPLE)
+        self.assertEqual(review_record["Project or repo"], "example")
+        self.assertEqual(review_record["Reviewer"], "reviewer")
+
     def test_example_accepts_all_required_statuses(self) -> None:
         validate_example_text(VALID_EXAMPLE)
 
@@ -97,15 +105,45 @@ class ValidateChecklistTests(unittest.TestCase):
         ):
             validate_example_text(invalid_example)
 
-    def test_contract_rejects_missing_example_link(self) -> None:
-        invalid_checklist = VALID_CHECKLIST.replace(
-            "examples/website-checklist-review-example.md",
-            "examples/missing.md",
+    def test_example_rejects_missing_findings_evidence(self) -> None:
+        invalid_example = VALID_EXAMPLE.replace(
+            "| 3.3 Performance | Pass | lighthouse report attached |\n",
+            "| 3.3 Performance | Pass |  |\n",
         )
 
         with self.assertRaisesRegex(
             AssertionError,
-            "Checklist must point reviewers to the completed example review artifact",
+            "Cross-Cutting Product Quality Findings must include evidence for section: 3.3 Performance",
+        ):
+            validate_example_text(invalid_example)
+
+    def test_findings_parser_rejects_unknown_sections(self) -> None:
+        findings_text = """| Checklist section | Status | Evidence summary |
+| --- | --- | --- |
+| 9.9 Imaginary Section | Pass | evidence |
+"""
+
+        with self.assertRaisesRegex(
+            AssertionError,
+            "Engineering Foundation Findings contains an unexpected checklist section: 9.9 Imaginary Section",
+        ):
+            parse_findings_table(
+                f"## Engineering Foundation Findings\n\n{findings_text}\n",
+                "Engineering Foundation Findings",
+                {
+                    "2.1 Build And Delivery Basics",
+                },
+            )
+
+    def test_contract_rejects_non_relative_example_link(self) -> None:
+        invalid_checklist = VALID_CHECKLIST.replace(
+            "(examples/website-checklist-review-example.md)",
+            "(/C:/Users/example/website-checklist-review-example.md)",
+        )
+
+        with self.assertRaisesRegex(
+            AssertionError,
+            "Checklist example-review link must use a repository-relative markdown target",
         ):
             validate_contract_text(invalid_checklist, VALID_EXAMPLE)
 

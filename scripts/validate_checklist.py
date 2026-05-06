@@ -8,6 +8,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CHECKLIST_PATH = ROOT / "website-development-checklist.md"
 EXAMPLE_PATH = ROOT / "examples" / "website-checklist-review-example.md"
+ALLOWED_STATUSES = {"Pass", "Fail", "Needs Evidence", "Not Applicable"}
+REQUIRED_ENGINEERING_SECTIONS = {
+    "2.1 Build And Delivery Basics",
+    "2.2 Code Quality Controls",
+    "2.3 State And Data Handling",
+    "2.4 Styling System, Tailwind, And Design Tokens",
+}
+REQUIRED_CROSS_CUTTING_SECTIONS = {
+    "3.1 Accessibility",
+    "3.2 Internationalization",
+    "3.3 Performance",
+    "3.4 Responsive Behavior",
+    "3.5 SEO And Discoverability",
+    "3.6 Security And Privacy",
+}
 
 REQUIRED_CHECKLIST_SNIPPETS = [
     "# Website Development Checklist (2026)",
@@ -39,10 +54,6 @@ REQUIRED_EXAMPLE_SNIPPETS = [
     "## Engineering Foundation Findings",
     "## Cross-Cutting Product Quality Findings",
     "## Outcome",
-    "Pass",
-    "Fail",
-    "Needs Evidence",
-    "Not Applicable",
 ]
 
 REVIEW_RECORD_FIELDS = [
@@ -66,6 +77,80 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def extract_section(text: str, heading: str) -> str:
+    pattern = re.compile(
+        rf"(?ms)^## {re.escape(heading)}\n(.*?)(?=^## |\Z)",
+    )
+    match = pattern.search(text)
+    require(match is not None, f"Missing required section: ## {heading}")
+    return match.group(1).strip()
+
+
+def parse_markdown_table(section_text: str) -> list[dict[str, str]]:
+    lines = [line.strip() for line in section_text.splitlines() if line.strip()]
+    table_lines = [line for line in lines if line.startswith("|") and line.endswith("|")]
+    require(len(table_lines) >= 2, "Expected a markdown table with a header and separator")
+
+    headers = [cell.strip() for cell in table_lines[0].strip("|").split("|")]
+    separator_cells = [cell.strip() for cell in table_lines[1].strip("|").split("|")]
+    require(
+        len(headers) == len(separator_cells),
+        "Markdown table separator must match the header column count",
+    )
+    require(
+        all(set(cell) <= {"-", ":"} and cell for cell in separator_cells),
+        "Markdown table must include a valid separator row",
+    )
+
+    rows: list[dict[str, str]] = []
+    for line in table_lines[2:]:
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        require(
+            len(cells) == len(headers),
+            "Markdown table row column count does not match the header",
+        )
+        rows.append(dict(zip(headers, cells)))
+    require(rows, "Markdown table must include at least one data row")
+    return rows
+
+
+def parse_review_record(text: str) -> dict[str, str]:
+    section_text = extract_section(text, "Review Record")
+    rows = parse_markdown_table(section_text)
+    fields = {row["Field"]: row["Example review content"] for row in rows}
+
+    for field in REVIEW_RECORD_FIELDS:
+        require(field in fields, f"Example review is missing review-record field: {field}")
+        require(fields[field], f"Example review field must not be empty: {field}")
+    return fields
+
+
+def parse_findings_table(text: str, heading: str, expected_sections: set[str]) -> list[dict[str, str]]:
+    section_text = extract_section(text, heading)
+    rows = parse_markdown_table(section_text)
+    seen_sections = set()
+
+    for row in rows:
+        section_name = row["Checklist section"]
+        status = row["Status"]
+        evidence = row["Evidence summary"]
+        require(
+            section_name in expected_sections,
+            f"{heading} contains an unexpected checklist section: {section_name}",
+        )
+        require(section_name not in seen_sections, f"{heading} repeats checklist section: {section_name}")
+        seen_sections.add(section_name)
+        require(status in ALLOWED_STATUSES, f"{heading} contains an invalid status: {status}")
+        require(evidence, f"{heading} must include evidence for section: {section_name}")
+
+    missing_sections = expected_sections - seen_sections
+    require(
+        not missing_sections,
+        f"{heading} is missing checklist sections: {', '.join(sorted(missing_sections))}",
+    )
+    return rows
+
+
 def lint_markdown_text(path: Path, text: str) -> None:
     require(text.endswith("\n"), f"{path.relative_to(ROOT)} must end with a newline")
     for number, line in enumerate(text.splitlines(), start=1):
@@ -78,14 +163,19 @@ def lint_markdown(path: Path) -> None:
 
 
 def validate_example_text(text: str) -> None:
-    for field in REVIEW_RECORD_FIELDS:
-        require(
-            f"| {field} |" in text,
-            f"Example review is missing review-record field: {field}",
-        )
+    parse_review_record(text)
+    engineering_rows = parse_findings_table(
+        text,
+        "Engineering Foundation Findings",
+        REQUIRED_ENGINEERING_SECTIONS,
+    )
+    cross_cutting_rows = parse_findings_table(
+        text,
+        "Cross-Cutting Product Quality Findings",
+        REQUIRED_CROSS_CUTTING_SECTIONS,
+    )
 
-    status_matches = re.findall(r"\|\s*(Pass|Fail|Needs Evidence|Not Applicable)\s*\|", text)
-    require(status_matches, "Example review must include at least one recognized checklist status")
+    status_matches = [row["Status"] for row in engineering_rows + cross_cutting_rows]
     for status in ("Pass", "Fail", "Needs Evidence", "Not Applicable"):
         require(
             status in status_matches,
@@ -113,9 +203,17 @@ def validate_contract_text(checklist_text: str, example_text: str) -> None:
     for snippet in REQUIRED_EXAMPLE_SNIPPETS:
         require(snippet in example_text, f"Example review is missing required content: {snippet}")
 
+    link_match = re.search(
+        r"\[examples/website-checklist-review-example\.md\]\(([^)]+)\)",
+        checklist_text,
+    )
     require(
-        "examples/website-checklist-review-example.md" in checklist_text,
+        link_match is not None,
         "Checklist must point reviewers to the completed example review artifact",
+    )
+    require(
+        link_match.group(1) == "examples/website-checklist-review-example.md",
+        "Checklist example-review link must use a repository-relative markdown target",
     )
     require(
         "2.1 Build And Delivery Basics" in example_text,
