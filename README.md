@@ -26,4 +26,4 @@ This repository contains checklist artifacts and a minimal factory setup for pro
 
 - `make lint` validates markdown hygiene for the checklist deliverables in this repository.
 - `make typecheck` validates the completed example review record against the required review fields and status model.
-- `make test` runs behavior-oriented validator tests and then validates the checklist review contract.
+- `make test` runs CLI-level validator tests against isolated fixtures and then validates the checked-in checklist review contract.

@@ -8,6 +8,7 @@ from pathlib import Path
 
 DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_STATUSES = {"Pass", "Fail", "Needs Evidence", "Not Applicable"}
+REQUIRED_STATUS_DEFINITIONS = ALLOWED_STATUSES
 REQUIRED_ENGINEERING_SECTIONS = {
     "2.1 Build And Delivery Basics",
     "2.2 Code Quality Controls",
@@ -22,22 +23,6 @@ REQUIRED_CROSS_CUTTING_SECTIONS = {
     "3.5 SEO And Discoverability",
     "3.6 Security And Privacy",
 }
-
-REQUIRED_CHECKLIST_SNIPPETS = [
-    "# Website Development Checklist (2026)",
-    "## Purpose",
-    "## How To Use This Checklist",
-    "## Review Output Template",
-    "## Status Definitions",
-    "### 2.1 Build And Delivery Basics",
-    "### 3.1 Accessibility",
-    "### 3.2 Internationalization",
-    "### 3.3 Performance",
-    "### 3.4 Responsive Behavior",
-    "### 3.5 SEO And Discoverability",
-    "### 3.6 Security And Privacy",
-    "### 4. Sources And Rationale",
-]
 
 REQUIRED_SOURCES = [
     "w3.org/TR/WCAG22",
@@ -104,10 +89,10 @@ def display_path(path: Path) -> str:
 
 def extract_section(text: str, heading: str) -> str:
     pattern = re.compile(
-        rf"(?ms)^## {re.escape(heading)}\n(.*?)(?=^## |\Z)",
+        rf"(?ms)^(?:##|###) {re.escape(heading)}\n(.*?)(?=^(?:##|###) |\Z)",
     )
     match = pattern.search(text)
-    require(match is not None, f"Missing required section: ## {heading}")
+    require(match is not None, f"Missing required section: {heading}")
     return match.group(1).strip()
 
 
@@ -137,6 +122,65 @@ def parse_markdown_table(section_text: str) -> list[dict[str, str]]:
         rows.append(dict(zip(headers, cells)))
     require(rows, "Markdown table must include at least one data row")
     return rows
+
+
+def parse_required_review_template(text: str) -> dict[str, str]:
+    section_text = extract_section(text, "Review Output Template")
+    rows = parse_markdown_table(section_text)
+    fields = {row["Field"]: row["Required review content"] for row in rows}
+
+    for field in REVIEW_RECORD_FIELDS:
+        require(field in fields, f"Checklist template is missing review field: {field}")
+        require(fields[field], f"Checklist template field must not be empty: {field}")
+    return fields
+
+
+def parse_status_definitions(text: str) -> dict[str, str]:
+    section_text = extract_section(text, "Status Definitions")
+    definitions = {}
+
+    for raw_line in section_text.splitlines():
+        line = raw_line.strip()
+        match = re.match(r"- `([^`]+)`: (.+)", line)
+        if match:
+            definitions[match.group(1)] = match.group(2).strip()
+
+    for status in REQUIRED_STATUS_DEFINITIONS:
+        require(status in definitions, f"Checklist is missing status definition: {status}")
+        require(definitions[status], f"Checklist status definition must not be empty: {status}")
+    return definitions
+
+
+def extract_subsection(text: str, heading: str) -> str:
+    pattern = re.compile(
+        rf"(?ms)^#### {re.escape(heading)}\n(.*?)(?=^#### |^(?:##|###) |\Z)",
+    )
+    match = pattern.search(text)
+    require(match is not None, f"Missing required checklist subsection: #### {heading}")
+    return match.group(1).strip()
+
+
+def parse_checklist_questions(text: str, heading: str) -> list[str]:
+    subsection = extract_subsection(text, heading)
+    questions = [
+        line[2:].strip()
+        for line in subsection.splitlines()
+        if line.startswith("- ")
+    ]
+    require(questions, f"Checklist subsection must include reviewer questions: {heading}")
+    for question in questions:
+        require(
+            question.endswith("?"),
+            f"Checklist subsection items must be reviewer-verifiable questions: {heading}",
+        )
+    return questions
+
+
+def parse_sources_section(text: str) -> list[str]:
+    section_text = extract_section(text, "4. Sources And Rationale")
+    source_lines = [line.strip() for line in section_text.splitlines() if line.strip().startswith("- ")]
+    require(len(source_lines) >= 4, "Checklist must cite at least four source entries")
+    return source_lines
 
 
 def parse_review_record(text: str) -> dict[str, str]:
@@ -216,21 +260,27 @@ def typecheck_example() -> None:
     validate_example_text(read_text(get_example_path()))
 
 
-def validate_contract_text(checklist_text: str, example_text: str) -> None:
-    validate_example_text(example_text)
+def validate_checklist_text(text: str) -> None:
+    require(text.startswith("# Website Development Checklist (2026)\n"), "Checklist must start with the canonical title")
+    parse_required_review_template(text)
+    parse_status_definitions(text)
 
-    for snippet in REQUIRED_CHECKLIST_SNIPPETS:
-        require(snippet in checklist_text, f"Checklist is missing required content: {snippet}")
+    all_required_sections = REQUIRED_ENGINEERING_SECTIONS | REQUIRED_CROSS_CUTTING_SECTIONS
+    for heading in sorted(all_required_sections):
+        parse_checklist_questions(text, heading)
 
     for source in REQUIRED_SOURCES:
-        require(source in checklist_text, f"Checklist is missing required source reference: {source}")
+        require(source in text, f"Checklist is missing required source reference: {source}")
 
-    for snippet in REQUIRED_EXAMPLE_SNIPPETS:
-        require(snippet in example_text, f"Example review is missing required content: {snippet}")
+    source_lines = parse_sources_section(text)
+    require(
+        all("Source:" in line or "Sources:" in line for line in source_lines),
+        "Checklist source entries must explain which source or sources informed the checks",
+    )
 
     link_match = re.search(
         r"\[examples/website-checklist-review-example\.md\]\(([^)]+)\)",
-        checklist_text,
+        text,
     )
     require(
         link_match is not None,
@@ -240,6 +290,14 @@ def validate_contract_text(checklist_text: str, example_text: str) -> None:
         link_match.group(1) == "examples/website-checklist-review-example.md",
         "Checklist example-review link must use a repository-relative markdown target",
     )
+
+
+def validate_contract_text(checklist_text: str, example_text: str) -> None:
+    validate_checklist_text(checklist_text)
+    validate_example_text(example_text)
+
+    for snippet in REQUIRED_EXAMPLE_SNIPPETS:
+        require(snippet in example_text, f"Example review is missing required content: {snippet}")
     require(
         "2.1 Build And Delivery Basics" in example_text,
         "Example review must demonstrate engineering-foundation checklist usage",
