@@ -116,6 +116,45 @@ The sections below define the review surface for the full checklist. Every item 
 
 ### 4. Runtime And Operational Readiness
 
+#### 4.1 Configuration And Secrets Handling
+
 - Can a reviewer identify how the backend is configured across environments, including which settings are required at runtime and where secrets are expected to come from?
-- Does the backend expose observable signals such as structured logs, health checks, metrics, traces, or actionable error reporting that support runtime debugging?
+- Are secrets loaded from explicit secret-management or environment mechanisms instead of being hard-coded in source, fixtures, logs, or build artifacts?
+- Does the backend validate required configuration at startup or deploy time so missing or malformed settings fail clearly instead of surfacing later as partial runtime behavior?
+- Can a reviewer inspect which configuration values are safe defaults, which are environment-specific, and which are considered sensitive?
+
+#### 4.2 Observability And Operator Signals
+
+- Does the backend emit structured logs with enough context for a reviewer to verify request, job, or event outcomes without relying on free-form ad hoc strings?
+- Are metrics, health surfaces, traces, or equivalent operational signals exposed for the critical runtime paths a reviewer would need to monitor?
+- Where requests, jobs, or events cross process boundaries, can a reviewer identify correlation, trace, or request identifiers that support end-to-end debugging?
+- Are errors reported with actionable context for operators, including the failing boundary or dependency, without exposing secrets or sensitive payloads?
+
+#### 4.3 Deployment, Rollback, And Command Readiness
+
 - Are deployment, rollback, or restart expectations documented well enough that a reviewer can verify how the service is expected to behave in production?
+- Can a reviewer find the operational commands or automation used to start the backend, run migrations if applicable, execute smoke checks, and confirm readiness after deploy?
+- If schema changes, background workers, or configuration rollouts require ordering constraints, is that sequencing explicit in repository docs, scripts, or release procedures?
+- Does the backend define a safe rollback or forward-fix expectation that a reviewer can inspect when deploys partially fail?
+
+#### 4.4 Background Jobs, Async Work, And Resilience
+
+- For background jobs, scheduled tasks, or event consumers, can a reviewer identify ownership of retries, dead-letter handling, duplicate delivery, and failure visibility?
+- Where async processing or external calls are used, are timeout, retry, and cancellation policies explicit in code or configuration instead of being left to library defaults?
+- When an operation can be retried or delivered more than once, does the backend define idempotency or deduplication behavior that a reviewer can verify from contracts, storage rules, or tests?
+- Does startup and shutdown behavior handle in-flight work safely, including readiness before serving traffic and graceful draining or cleanup when stopping?
+
+### 5. Security And Dependency Hygiene
+
+- Are authentication and authorization boundaries explicit at the transport or command boundary instead of being implied by downstream assumptions?
+- Is untrusted input validated, normalized, and constrained before it reaches privileged operations, persistence, or external integrations?
+- Does the backend avoid exposing secrets, access tokens, internal stack traces, or sensitive personal data in logs, error payloads, test fixtures, or generated artifacts?
+- Are third-party dependencies, service credentials, and infrastructure permissions scoped to least privilege and kept narrow enough that a reviewer can inspect the blast radius?
+- Can a reviewer identify how security-sensitive libraries, generated clients, or platform capabilities are introduced and upgraded without bypassing normal review or verification paths?
+
+### 6. Sources
+
+- `The Twelve-Factor App` informed configuration, environment separation, and deployability expectations so the checklist emphasizes explicit config and operational command surfaces.
+- `OWASP API Security Top 10` informed the validation, authorization, and sensitive-data handling checks so the checklist covers baseline backend security review points.
+- `Google SRE Workbook` informed observability, rollout safety, and operator-readiness expectations so runtime signals and deploy behavior stay reviewer-verifiable.
+- `RFC 9110: HTTP Semantics` informed the contract and error-surface framing for APIs so status behavior and request handling expectations stay grounded in an external standard.
