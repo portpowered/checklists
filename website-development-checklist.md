@@ -95,10 +95,68 @@ The sections below define the review surface for the full checklist. Every item 
 
 ### 3. Cross-Cutting Product Quality
 
-- Can a reviewer inspect a dedicated section for accessibility, internationalization, performance, responsive behavior, SEO or discoverability, and security or privacy?
-- Are cross-cutting quality requirements written so they can be verified by browser behavior, metadata, automated audits, or production configuration?
+#### 3.1 Accessibility
+
+- Does the site target WCAG 2.2 Level AA as its baseline accessibility standard, with any exceptions documented explicitly in review evidence?
+- Do pages use semantic HTML landmarks, heading structure, lists, tables, and button or link elements so a reviewer does not find custom widgets where native elements would satisfy the interaction?
+- Can every interactive control be reached and operated with a keyboard alone without a keyboard trap?
+- Is visible focus present on interactive elements, and does the focused element remain visible instead of being hidden under sticky headers, overlays, or clipped containers?
+- Do form controls, icon-only buttons, dialogs, and custom widgets expose an accessible name, role, state, and error or help text that a reviewer can verify in the accessibility tree or with assistive technology?
+- When the UI opens a modal, drawer, menu, route transition, or validation error state, is focus moved intentionally so keyboard and screen-reader users are not left behind?
+- Are drag, swipe, or pointer-specific interactions backed by an alternative input path when the same task matters to core product use?
+- Is important meaning conveyed without relying on color alone, and do text or control states preserve readable contrast in the shipped UI?
+- Does the review evidence include both automated accessibility checks and manual verification such as keyboard traversal, screen-reader spot checks, or accessibility acceptance notes?
+
+#### 3.2 Internationalization
+
+- Does the root document set a valid `lang` value, and do localized content fragments override language where a reviewer can observe mixed-language content?
+- When the product supports right-to-left languages or mixed-direction content, is direction handled semantically with HTML direction attributes where relevant instead of relying only on visual CSS overrides?
+- Is user-facing copy externalized from component logic so a reviewer does not find hard-coded product strings scattered across implementation files?
+- Are dates, times, numbers, currencies, lists, and relative-time values formatted through locale-aware APIs or framework helpers instead of manual string concatenation?
+- Is locale selection, fallback behavior, and default-language behavior documented or implemented in a way a reviewer can verify from configuration or runtime behavior?
+- Do layouts tolerate longer translated strings, alternate plural forms, and locale-dependent formatting without clipping, overlap, or hidden controls at supported breakpoints?
+
+#### 3.3 Performance
+
+- Does the project define a repeatable audit path for performance, such as Lighthouse, Lighthouse CI, PageSpeed Insights, or field telemetry, instead of relying on ad hoc browser impressions?
+- If Core Web Vitals are measured, does the review evidence show LCP at or below 2.5 seconds, INP at or below 200 milliseconds, and CLS at or below 0.1 at the 75th percentile for the supported experience, or document why an exception is accepted?
+- Are production JavaScript, CSS, font, and image assets fingerprinted or otherwise versioned so cache behavior can be verified across releases?
+- Are non-critical images, embeds, and scripts deferred, lazy-loaded, or code-split where appropriate, while above-the-fold content needed for initial rendering is not delayed behind avoidable client-side work?
+- Do images declare dimensions or equivalent reserved space so a reviewer can confirm that media loading does not introduce avoidable layout shifts?
+- Is there a repository-level performance budget, CI assertion, or release gate that can detect regressions before deployment when the product depends on performance-sensitive flows?
+
+#### 3.4 Responsive Behavior
+
+- Does each user-facing page include a mobile viewport configuration appropriate for responsive rendering?
+- Can the primary user journeys be completed at the supported mobile, tablet, and desktop widths without horizontal scrolling, clipped actions, or hidden essential content?
+- Do layouts respond to available space with shared breakpoints or component rules that a reviewer can inspect instead of per-page one-off overrides?
+- Do touch, mouse, and keyboard users all retain access to primary actions, without hover-only affordances hiding required functionality on coarse-pointer devices?
+- Do responsive images, media, and embedded content scale within their containers without overflowing the viewport?
+
+#### 3.5 SEO And Discoverability
+
+- Does every indexable page expose a unique, accurate `<title>` and a meaningful meta description or equivalent metadata that matches the rendered content?
+- Can search crawlers access the same important HTML, CSS, and JavaScript resources that normal users need to render the page, without those resources being blocked accidentally?
+- If pages are meant to be indexed, are canonical URLs, crawl directives, and sitemap behavior configured intentionally rather than left ambiguous across environments?
+- Is important content discoverable in rendered HTML so a reviewer does not find key page meaning hidden behind client-only rendering failures or blocked resources?
+- When the content type benefits from it, is structured data present, valid, and tested with the relevant search tooling instead of being assumed correct?
+- If a page or route should stay out of search results, is the exclusion mechanism explicit and documented so reviewers can distinguish intentional privacy from accidental invisibility?
+
+#### 3.6 Security And Privacy
+
+- Is the site served over HTTPS in production, with HTTP redirected or otherwise prevented where reviewers can verify transport security behavior?
+- Are security headers configured intentionally for the rendered site, including a Content Security Policy and transport or embedding protections appropriate to the deployment?
+- If the site uses cookies for sessions or authentication, are `Secure`, `HttpOnly`, and `SameSite` attributes set appropriately and observable in runtime responses?
+- Are third-party scripts, tags, or embeds limited to justified use cases, with ownership and data purpose documented so reviewers can understand the privacy impact?
+- Is user-generated or external input validated and output-encoded at the relevant boundaries so reviewers do not find raw untrusted HTML, script injection paths, or unsafe URL handling in normal flows?
+- If the site collects analytics, marketing, or personal data, are consent, retention, and disclosure requirements implemented or documented in a way that can be reviewed from shipped behavior or repository configuration?
 
 ### 4. Sources And Rationale
 
-- Does the final checklist include a small set of authoritative external sources that explain where the review standard came from?
-- Does each source contribute to concrete checklist expectations instead of serving as general reading material?
+The checklist above is informed by the following sources. Each source contributed concrete checks rather than general inspiration.
+
+- W3C WCAG 2.2: establishes the accessibility conformance target and reinforced checks around keyboard operation, focus visibility, target size, redundant entry, and accessible authentication. Source: https://www.w3.org/TR/WCAG22/
+- MDN HTML and Internationalization guidance: informed the checks for valid `lang` usage, semantic text direction with `dir`, and locale-aware formatting through the `Intl` APIs. Sources: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes , https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/dir , https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Internationalization
+- Google web performance guidance on `web.dev` and Lighthouse: informed the Core Web Vitals thresholds, repeatable performance auditing, Lighthouse-based regression checks, and responsive viewport and layout expectations. Sources: https://web.dev/articles/vitals , https://web.dev/responsive-web-design-basics/ , https://web.dev/articles/lighthouse-ci , https://developer.chrome.com/docs/lighthouse/overview
+- Google Search Central: informed the SEO and discoverability checks around rendered HTML, crawler access to CSS and JavaScript, structured data, and validation with Search Console tooling. Sources: https://developers.google.com/search/docs/fundamentals/seo-starter-guide , https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics
+- OWASP Cheat Sheet Series: informed the security and privacy checks around HTTPS enforcement, Content Security Policy, HSTS, cookie attributes, and response-header hardening. Source: https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
