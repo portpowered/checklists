@@ -66,16 +66,18 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def lint_markdown(path: Path) -> None:
-    text = read_text(path)
+def lint_markdown_text(path: Path, text: str) -> None:
     require(text.endswith("\n"), f"{path.relative_to(ROOT)} must end with a newline")
     for number, line in enumerate(text.splitlines(), start=1):
         require("\t" not in line, f"{path.relative_to(ROOT)}:{number} contains a tab character")
         require(line == line.rstrip(), f"{path.relative_to(ROOT)}:{number} has trailing whitespace")
 
 
-def typecheck_example() -> None:
-    text = read_text(EXAMPLE_PATH)
+def lint_markdown(path: Path) -> None:
+    lint_markdown_text(path, read_text(path))
+
+
+def validate_example_text(text: str) -> None:
     for field in REVIEW_RECORD_FIELDS:
         require(
             f"| {field} |" in text,
@@ -84,15 +86,23 @@ def typecheck_example() -> None:
 
     status_matches = re.findall(r"\|\s*(Pass|Fail|Needs Evidence|Not Applicable)\s*\|", text)
     require(status_matches, "Example review must include at least one recognized checklist status")
+    for status in ("Pass", "Fail", "Needs Evidence", "Not Applicable"):
+        require(
+            status in status_matches,
+            f"Example review must include a checklist row with status: {status}",
+        )
     require(
         "### Evidence Notes" in text,
         "Example review must include evidence notes for reviewer-observable behavior",
     )
 
 
-def test_contract() -> None:
-    checklist_text = read_text(CHECKLIST_PATH)
-    example_text = read_text(EXAMPLE_PATH)
+def typecheck_example() -> None:
+    validate_example_text(read_text(EXAMPLE_PATH))
+
+
+def validate_contract_text(checklist_text: str, example_text: str) -> None:
+    validate_example_text(example_text)
 
     for snippet in REQUIRED_CHECKLIST_SNIPPETS:
         require(snippet in checklist_text, f"Checklist is missing required content: {snippet}")
@@ -104,7 +114,7 @@ def test_contract() -> None:
         require(snippet in example_text, f"Example review is missing required content: {snippet}")
 
     require(
-        "See `examples/website-checklist-review-example.md`" in checklist_text,
+        "examples/website-checklist-review-example.md" in checklist_text,
         "Checklist must point reviewers to the completed example review artifact",
     )
     require(
@@ -115,6 +125,10 @@ def test_contract() -> None:
         "3.1 Accessibility" in example_text and "3.3 Performance" in example_text,
         "Example review must demonstrate cross-cutting checklist usage",
     )
+
+
+def test_contract() -> None:
+    validate_contract_text(read_text(CHECKLIST_PATH), read_text(EXAMPLE_PATH))
 
 
 def main(argv: list[str]) -> int:

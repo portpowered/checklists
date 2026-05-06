@@ -14,7 +14,7 @@ Use this document during implementation planning, pull request review, release r
 - Only mark `Pass` when the reviewer can verify the claim by inspecting repository configuration, running project commands, or observing runtime behavior.
 - Treat unchecked or unverifiable items as follow-up work rather than assumptions.
 - Record links to evidence such as scripts, config files, CI jobs, screenshots, audits, or live behavior when a review requires traceability.
-- See `examples/website-checklist-review-example.md` for a completed sample review record that demonstrates the expected output shape and decision model.
+- See [examples/website-checklist-review-example.md](/C:/Users/andre/work/test/.claude/worktrees/website-checklist/examples/website-checklist-review-example.md) for a completed sample review record that demonstrates the expected output shape and decision model.
 
 ## Review Output Template
 

@@ -6,12 +6,12 @@ This example shows how a reviewer can apply `website-development-checklist.md` t
 
 | Field | Example review content |
 | --- | --- |
-| Project or repo | `acme-marketing-site` |
+| Project or repo | `acme-partner-portal` |
 | Reviewer | `Taylor Reviewer` |
 | Review date | `2026-05-06` |
 | Revision reviewed | `abc1234` |
 | Evidence location | `PR #42`, Lighthouse report, accessibility notes |
-| Exceptions approved | `Not Applicable` for right-to-left layout support because the product ships English-only content today |
+| Exceptions approved | `Not Applicable` for public-search indexing because this release is an authenticated staff portal approved to remain `noindex` |
 
 ## Engineering Foundation Findings
 
@@ -27,10 +27,10 @@ This example shows how a reviewer can apply `website-development-checklist.md` t
 | Checklist section | Status | Evidence summary |
 | --- | --- | --- |
 | 3.1 Accessibility | Pass | Keyboard traversal, visible focus, accessible labels, and dialog focus management were verified manually and with automated checks. |
-| 3.2 Internationalization | Fail | User-facing date strings are still manually concatenated in one checkout component instead of using locale-aware formatting. |
+| 3.2 Internationalization | Fail | User-facing date strings are still manually concatenated in one account-summary component instead of using locale-aware formatting. |
 | 3.3 Performance | Pass | Lighthouse CI and production telemetry both show the primary route within the team's Core Web Vitals targets. |
 | 3.4 Responsive Behavior | Pass | Primary flows were verified at mobile, tablet, and desktop widths without horizontal overflow. |
-| 3.5 SEO And Discoverability | Pass | The page exposes a unique title, canonical URL, and crawlable rendered HTML. |
+| 3.5 SEO And Discoverability | Not Applicable | The reviewed routes sit behind authentication and ship with intentional `noindex` directives documented in the release evidence. |
 | 3.6 Security And Privacy | Needs Evidence | CSP ownership and cookie attribute verification were not attached to the release evidence. |
 
 ## Outcome

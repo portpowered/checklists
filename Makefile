@@ -10,6 +10,7 @@ typecheck:
 	$(PYTHON) $(VALIDATOR) typecheck
 
 test:
+	$(PYTHON) -m unittest discover -s tests -p "test_*.py"
 	$(PYTHON) $(VALIDATOR) test
 
 check: lint typecheck test
