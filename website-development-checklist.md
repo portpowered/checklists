@@ -15,6 +15,26 @@ Use this document during implementation planning, pull request review, release r
 - Treat unchecked or unverifiable items as follow-up work rather than assumptions.
 - Record links to evidence such as scripts, config files, CI jobs, screenshots, audits, or live behavior when a review requires traceability.
 
+## Review Output Template
+
+Use this template when applying the checklist to a specific project so the outcome is recorded consistently:
+
+| Field | Required review content |
+| --- | --- |
+| Project or repo | Name of the website or repository under review |
+| Reviewer | Person performing the review |
+| Review date | Date the checklist was applied |
+| Revision reviewed | Commit SHA, release tag, or deployment identifier |
+| Evidence location | Pull request, ticket, document, or audit log that stores evidence |
+| Exceptions approved | Explicit deviations that were accepted and by whom |
+
+## Status Definitions
+
+- `Pass`: The reviewer found direct evidence in the repository, CI, deployed behavior, or an attached audit artifact.
+- `Fail`: The criterion is expected for this project and the reviewer found contrary evidence or a missing implementation.
+- `Needs Evidence`: The implementation may exist, but the reviewer cannot verify it from the available evidence.
+- `Not Applicable`: The criterion does not apply to this project, and the reason is documented in the review output.
+
 ## Review Rules
 
 - Review the website as an engineering system, not as a visual mood board.
@@ -24,7 +44,7 @@ Use this document during implementation planning, pull request review, release r
 
 ## Checklist Sections
 
-The sections below define the review surface for the full checklist. Each section will be expanded with concrete pass/fail checks and supporting source references.
+The sections below define the review surface for the full checklist. Every item is written so a reviewer can answer it from observable evidence instead of subjective taste.
 
 ### 1. Project Scope And Review Readiness
 
@@ -46,4 +66,3 @@ The sections below define the review surface for the full checklist. Each sectio
 
 - Does the final checklist include a small set of authoritative external sources that explain where the review standard came from?
 - Does each source contribute to concrete checklist expectations instead of serving as general reading material?
-
