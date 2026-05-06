@@ -86,9 +86,33 @@ The sections below define the review surface for the full checklist. Every item 
 
 ### 3. Verification And Change Safety
 
-- Does the backend expose documented quality gates such as typecheck, lint, test, or equivalent commands that reviewers can run without editor-specific setup?
-- Can a reviewer identify test evidence for changed behavior instead of relying on comments or assumptions about correctness?
-- Are failure paths, invalid input handling, and dependency errors represented in tests, runtime contracts, or review evidence where those risks matter?
+#### 3.1 Test Evidence At The Correct Layer
+
+- For each meaningful behavior change, can a reviewer identify direct test evidence at the correct layer, such as unit tests for pure logic, integration tests for persistence or integration seams, contract tests for schemas or interfaces, and end-to-end or smoke coverage where runtime wiring is the risk?
+- Does the backend avoid relying on a single shallow test layer when the change crosses process, storage, queue, filesystem, or network boundaries that require stronger evidence?
+- When a change affects public APIs, events, jobs, or commands, can a reviewer find verification that the observable contract still behaves as documented rather than only seeing internal helper tests?
+- If a reviewer marks a lower test layer as sufficient, is the reason inspectable from the change scope and system boundary rather than implied by habit?
+
+#### 3.2 Mocks, Fakes, And Real Dependency Coverage
+
+- Are mocks, stubs, or fakes used to isolate pure decision logic or rare dependency conditions instead of replacing the exact dependency behavior that the change is supposed to prove?
+- Where database queries, queue publishing, filesystem behavior, or outbound HTTP translation are part of the changed contract, can a reviewer find tests that exercise the real adapter, a production-like test harness, or another evidence source strong enough to verify integration correctness?
+- When a fake or fixture replaces an external dependency, does it preserve the important contract shape, failure modes, and data semantics a reviewer would expect from production?
+- Can a reviewer identify which dependencies are intentionally mocked and why, instead of inferring hidden gaps from test setup code?
+
+#### 3.3 Determinism, Isolation, And Failure Cases
+
+- Do tests control time, randomness, environment configuration, and external side effects well enough that repeated runs are deterministic and reviewer-reproducible?
+- Are test fixtures, factories, or seed data scoped so one test does not rely on mutable state leaked from another test, process, or prior run?
+- For the changed behavior, can a reviewer find explicit coverage for invalid input, dependency failure, and the user-visible or operator-visible outcome of those failures?
+- When the backend implements retries, timeouts, cancellation, idempotency, or compensating behavior, do tests or equivalent evidence show both the success path and the failure or exhaustion path?
+
+#### 3.4 Quality Gates And CI Readiness
+
+- Does the repository document typecheck, lint, test, and any backend-specific verification commands in a form a reviewer can run locally without editor-specific setup?
+- Are the same quality gates expected in CI, pre-merge automation, or another shared execution path instead of existing only as local tribal knowledge?
+- If a backend does not support one of the standard gates such as typecheck or lint, is the substitute verification mechanism explicit enough that a reviewer can understand why the gap is acceptable?
+- Can a reviewer determine from repository scripts, task runners, or CI configuration which commands are the source of truth for merge readiness?
 
 ### 4. Runtime And Operational Readiness
 
