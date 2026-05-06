@@ -1,7 +1,13 @@
-.PHONY: test
+.PHONY: setup typecheck lint test
 
-# This repository currently ships checklist documents rather than executable
-# application code, so the repository-native quality gate is a clean diff
-# check for tracked changes.
-test:
-	git diff --check -- . ':(exclude)prd.json' ':(exclude)prd.md' ':(exclude)progress.txt'
+setup:
+	npm ci --silent
+
+typecheck: setup
+	npm run typecheck --silent
+
+lint: setup
+	npm run lint --silent
+
+test: typecheck lint
+	npm test --silent
