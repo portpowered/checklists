@@ -4,3 +4,4 @@ infinite-you.exe
 node_modules/
 sdfsdf.png
 tasks/
+__pycache__/
