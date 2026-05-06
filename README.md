@@ -1,29 +1,23 @@
 # Checklist README
 
-This repository contains checklist artifacts and a minimal factory setup for processing `task` work items.
+This is a repository of various checklists. 
 
-## Project Checklist
+We use these checklists as a mechanism to validate the system against levers of known best practices. 
 
-- [ ] Review [`factory/factory.json`](factory/factory.json) to confirm the workflow matches your intent.
-- [ ] Add incoming task files under [`factory/inputs/README.md`](factory/inputs/README.md)'s starter inbox path: `inputs/task/default/`.
-- [ ] Update the worker definition in [`factory/workers/processor/AGENTS.md`](factory/workers/processor/AGENTS.md) if the processor needs different instructions, tools, or timeout settings.
-- [ ] Update the workstation prompt in [`factory/workstations/process/AGENTS.md`](factory/workstations/process/AGENTS.md) if each work item needs additional context or formatting rules.
-- [ ] Confirm the `task` lifecycle states are correct: `init`, `complete`, and `failed`.
-- [ ] Confirm the `process` workstation should route `task/init` work to the `processor` worker.
-- [ ] Start the local factory runtime that consumes the starter inbox and executes work items.
-- [ ] Submit a test task and verify it moves from `init` to `complete`.
-- [ ] Inspect failure handling and confirm failed work lands in the `failed` state as expected.
-- [ ] Replace this checklist with team-specific operating notes if this repository becomes a long-lived project.
+## Why? 
+To improve quality
 
-## Current Flow
+### Theory 
+In statistical process control, when you don't have control over the thing you want (quality, worth, appeal), then you have to 
+1. create soft signals that somewhat positively correlate so that you can push that target somehow. 
+2. control inputs 
+3. build a rough estimate based on relative signals + assumptions + statistical model
 
-1. A `task` work item is submitted to the starter inbox.
-2. The `process` workstation picks up `task` items in the `init` state.
-3. The `processor` worker handles the request.
-4. Successful work exits as `complete`; failures exit as `failed`.
+To that end, we look to optimize the quality, correctness, standards of code by applying standard techniques as a facsimile to truth: 
+1. test code coverage
+2. CI/CD
+3. standards conformance
+4. linting shapes
+5. documentation and structural conformaance
 
-## Checklist Quality Commands
-
-- `make lint` validates markdown hygiene for the checklist deliverables in this repository.
-- `make typecheck` validates the completed example review record against the required review fields and status model.
-- `make test` runs CLI-level validator tests against isolated fixtures and then validates the checked-in checklist review contract.
+The lack of quality attributes such as lack of support for WCAG, internationalization, security scanning, etc are useful proxies to approximate the quality of a system. 
