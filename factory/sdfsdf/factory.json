@@ -352,28 +352,6 @@
       "worktree": "{{ (index .Inputs 0).Name }}"
     },
     {
-      "behavior": "CRON",
-      "cron": {
-        "schedule": "0 */1 * * *"
-      },
-      "inputs": [],
-      "name": "cleaner",
-      "outputs": [
-        {
-          "state": "complete",
-          "workType": "cron-triggers"
-        }
-      ],
-      "resources": [
-        {
-          "capacity": 1,
-          "name": "executor-slot"
-        }
-      ],
-      "type": "MODEL_WORKSTATION",
-      "worker": "processor"
-    },
-    {
       "guards": [
         {
           "maxVisits": 50,
