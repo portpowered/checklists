@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import re
 import sys
+import os
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent.parent
-CHECKLIST_PATH = ROOT / "website-development-checklist.md"
-EXAMPLE_PATH = ROOT / "examples" / "website-checklist-review-example.md"
+DEFAULT_ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_STATUSES = {"Pass", "Fail", "Needs Evidence", "Not Applicable"}
 REQUIRED_ENGINEERING_SECTIONS = {
     "2.1 Build And Delivery Basics",
@@ -68,13 +67,39 @@ REVIEW_RECORD_FIELDS = [
 
 def read_text(path: Path) -> str:
     if not path.exists():
-        raise AssertionError(f"Missing required file: {path.relative_to(ROOT)}")
+        raise AssertionError(f"Missing required file: {display_path(path)}")
     return path.read_text(encoding="utf-8")
 
 
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def get_root() -> Path:
+    return Path(os.environ.get("CHECKLIST_VALIDATOR_ROOT", DEFAULT_ROOT)).resolve()
+
+
+def get_checklist_path() -> Path:
+    configured = os.environ.get("CHECKLIST_PATH")
+    if configured:
+        return Path(configured).resolve()
+    return get_root() / "website-development-checklist.md"
+
+
+def get_example_path() -> Path:
+    configured = os.environ.get("EXAMPLE_PATH")
+    if configured:
+        return Path(configured).resolve()
+    return get_root() / "examples" / "website-checklist-review-example.md"
+
+
+def display_path(path: Path) -> str:
+    root = get_root()
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
 
 
 def extract_section(text: str, heading: str) -> str:
@@ -152,10 +177,10 @@ def parse_findings_table(text: str, heading: str, expected_sections: set[str]) -
 
 
 def lint_markdown_text(path: Path, text: str) -> None:
-    require(text.endswith("\n"), f"{path.relative_to(ROOT)} must end with a newline")
+    require(text.endswith("\n"), f"{display_path(path)} must end with a newline")
     for number, line in enumerate(text.splitlines(), start=1):
-        require("\t" not in line, f"{path.relative_to(ROOT)}:{number} contains a tab character")
-        require(line == line.rstrip(), f"{path.relative_to(ROOT)}:{number} has trailing whitespace")
+        require("\t" not in line, f"{display_path(path)}:{number} contains a tab character")
+        require(line == line.rstrip(), f"{display_path(path)}:{number} has trailing whitespace")
 
 
 def lint_markdown(path: Path) -> None:
@@ -188,7 +213,7 @@ def validate_example_text(text: str) -> None:
 
 
 def typecheck_example() -> None:
-    validate_example_text(read_text(EXAMPLE_PATH))
+    validate_example_text(read_text(get_example_path()))
 
 
 def validate_contract_text(checklist_text: str, example_text: str) -> None:
@@ -226,7 +251,7 @@ def validate_contract_text(checklist_text: str, example_text: str) -> None:
 
 
 def test_contract() -> None:
-    validate_contract_text(read_text(CHECKLIST_PATH), read_text(EXAMPLE_PATH))
+    validate_contract_text(read_text(get_checklist_path()), read_text(get_example_path()))
 
 
 def main(argv: list[str]) -> int:
@@ -237,8 +262,8 @@ def main(argv: list[str]) -> int:
     command = argv[1]
     try:
         if command == "lint":
-            lint_markdown(CHECKLIST_PATH)
-            lint_markdown(EXAMPLE_PATH)
+            lint_markdown(get_checklist_path())
+            lint_markdown(get_example_path())
         elif command == "typecheck":
             typecheck_example()
         else:

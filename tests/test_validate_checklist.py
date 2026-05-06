@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from scripts.validate_checklist import parse_findings_table, parse_review_record, validate_contract_text, validate_example_text
 
@@ -146,6 +151,84 @@ class ValidateChecklistTests(unittest.TestCase):
             "Checklist example-review link must use a repository-relative markdown target",
         ):
             validate_contract_text(invalid_checklist, VALID_EXAMPLE)
+
+
+class ValidateChecklistCliTests(unittest.TestCase):
+    def test_lint_command_reports_success(self) -> None:
+        result = run_validator_command("lint")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "lint passed")
+        self.assertEqual(result.stderr, "")
+
+    def test_lint_command_reports_failure_details(self) -> None:
+        checklist = VALID_CHECKLIST.rstrip("\n")
+
+        result = run_validator_command("lint", checklist_text=checklist)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: website-development-checklist.md must end with a newline", result.stderr)
+
+    def test_typecheck_command_reports_success(self) -> None:
+        result = run_validator_command("typecheck")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "typecheck passed")
+        self.assertEqual(result.stderr, "")
+
+    def test_typecheck_command_reports_review_record_failure(self) -> None:
+        example = VALID_EXAMPLE.replace(
+            "| Reviewer | reviewer |\n",
+            "",
+        )
+
+        result = run_validator_command("typecheck", example_text=example)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: Example review is missing review-record field: Reviewer", result.stderr)
+
+    def test_test_command_reports_contract_failure(self) -> None:
+        checklist = VALID_CHECKLIST.replace(
+            "(examples/website-checklist-review-example.md)",
+            "(/tmp/non-relative-link.md)",
+        )
+
+        result = run_validator_command("test", checklist_text=checklist)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn(
+            "ERROR: Checklist example-review link must use a repository-relative markdown target",
+            result.stderr,
+        )
+
+
+def run_validator_command(
+    command: str,
+    *,
+    checklist_text: str = VALID_CHECKLIST,
+    example_text: str = VALID_EXAMPLE,
+) -> subprocess.CompletedProcess[str]:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        example_dir = root / "examples"
+        example_dir.mkdir()
+        (root / "website-development-checklist.md").write_text(checklist_text, encoding="utf-8")
+        (example_dir / "website-checklist-review-example.md").write_text(example_text, encoding="utf-8")
+
+        env = os.environ.copy()
+        env["CHECKLIST_VALIDATOR_ROOT"] = str(root)
+
+        return subprocess.run(
+            [sys.executable, "scripts/validate_checklist.py", command],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=Path(__file__).resolve().parent.parent,
+            check=False,
+        )
 
 
 if __name__ == "__main__":
