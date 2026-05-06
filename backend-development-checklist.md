@@ -55,9 +55,34 @@ The sections below define the review surface for the full checklist. Every item 
 
 ### 2. Structure And Design Boundaries
 
+#### 2.1 Module Ownership And Dependency Direction
+
 - Can a reviewer identify where transport, business logic, persistence, and external integrations live instead of finding those concerns mixed together without clear seams?
 - Does the repository organize modules, packages, or directories so ownership and dependency direction are inspectable instead of hidden behind circular or cross-cutting imports?
+- Are dependencies directed inward toward shared domain or application logic rather than allowing transport or infrastructure layers to own business rules by default?
+- If multiple services, workers, or bounded contexts exist, does each one expose a clear ownership boundary instead of sharing mutable implementation details across unrelated areas?
+
+#### 2.2 Contracts, Inputs, And Outputs
+
+- Do API handlers, background jobs, event consumers, or command entry points define typed or otherwise explicit input and output contracts that a reviewer can inspect in code or schemas?
+- Is input validation performed at the boundary where external data enters the backend instead of relying on downstream assumptions or ad hoc null checks?
+- When the backend publishes or consumes versioned APIs, events, or job payloads, is compatibility strategy documented in code, schemas, or tests so a reviewer can see how breaking changes are controlled?
+- Are error responses, domain failures, and retryable conditions represented through explicit contract shapes or conventions instead of inconsistent free-form strings?
+
+#### 2.3 Code Quality Controls And Local Reasoning
+
+- Does the repository define linting, formatting, or equivalent static checks that reviewers can run from the command line without editor-specific setup?
+- Are naming, file placement, and exported interfaces consistent enough that a reviewer can predict where a new handler, service, repository, or adapter should live?
 - Are side-effecting concerns such as filesystem access, network calls, environment lookup, time, or process execution isolated behind explicit boundaries a reviewer can trace?
+- Does the code avoid hidden global state, mutable shared singletons, or magic configuration values that make runtime behavior difficult for a reviewer to follow?
+- Are errors handled through explicit return paths, typed failures, or documented exception conventions instead of being silently swallowed or translated inconsistently across layers?
+
+#### 2.4 Persistence, Dependencies, And Integration Seams
+
+- Can a reviewer identify the modules responsible for database access, cache access, queue publishing, or third-party HTTP calls instead of finding those operations scattered through handlers or domain logic?
+- Are persistence and network calls wrapped behind explicit repositories, gateways, clients, or adapters where a reviewer can inspect retry, timeout, and translation behavior?
+- Does the backend keep data-access policy explicit, including transaction ownership, consistency expectations, and rules for cross-store or cross-service coordination where relevant?
+- Are third-party libraries and generated clients introduced behind narrow seams so the backend can be tested, upgraded, or replaced without rewriting unrelated business logic?
 
 ### 3. Verification And Change Safety
 
@@ -70,4 +95,3 @@ The sections below define the review surface for the full checklist. Every item 
 - Can a reviewer identify how the backend is configured across environments, including which settings are required at runtime and where secrets are expected to come from?
 - Does the backend expose observable signals such as structured logs, health checks, metrics, traces, or actionable error reporting that support runtime debugging?
 - Are deployment, rollback, or restart expectations documented well enough that a reviewer can verify how the service is expected to behave in production?
-
