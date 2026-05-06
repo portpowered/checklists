@@ -1,0 +1,425 @@
+{
+  "name": "sdfsdf",
+  "resources": [
+    {
+      "capacity": 10,
+      "name": "executor-slot"
+    }
+  ],
+  "supportingFiles": {
+    "bundledFiles": [
+      {
+        "content": {
+          "encoding": "utf-8",
+          "inline": "BINARY_NAME := infinite-you\nCMD_PATH    := ./cmd/factory/\nBIN_DIR     := bin\nBUN         ?= bun\nGO          ?= go\nINSTALL_DIR := $(or $(GOBIN),$(shell $(GO) env GOPATH)/bin)\nFUNCTIONAL_DEFAULT_PACKAGES := ./tests/functional/...\nFUNCTIONAL_DEFAULT_JOBS ?= 2\nFUNCTIONAL_LONG_TAGS ?= functionallong\nFUNCTIONAL_LONG_PACKAGES := ./tests/functional/...\nSCRIPT_TIMEOUT_COMPANION_SMOKE_TEST := TestIntegrationSmoke_ScriptTimeoutCompanionRequeuesBeforeLaterCompletion\nSCRIPT_TIMEOUT_COMPANION_SMOKE_COUNT ?= 100\nSCRIPT_TIMEOUT_COMPANION_SMOKE_TIMEOUT ?= 120s\nCRON_TIME_WORK_SMOKE_TEST := TestCronWorkstations_ServiceModeSmoke_SubmitsInternalTimeWorkExpiresRetriesDispatchesAndFiltersViews\nCRON_TIME_WORK_SMOKE_COUNT ?= 10\nCRON_TIME_WORK_SMOKE_TIMEOUT ?= 120s\nCURRENT_FACTORY_WATCHER_SWITCH_SMOKE_TEST := TestCurrentFactoryActivationFixture_ActivatesSecondPersistedFactoryAndResolvesCurrentFactory\nCURRENT_FACTORY_WATCHER_SWITCH_SMOKE_COUNT ?= 1\nCURRENT_FACTORY_WATCHER_SWITCH_SMOKE_TIMEOUT ?= 120s\n\nifeq ($(OS),Windows_NT)\n\tBINARY_NAME := infinite-you.exe\nendif\n\n# Detect git worktree environment\n# In a worktree, --git-common-dir points to the main repo's .git directory,\n# while --git-dir points to the worktree's .git file. When they differ, we're\n# in a worktree and must force a full rebuild to avoid stale build cache.\n_GIT_COMMON_DIR := $(shell git rev-parse --git-common-dir 2\u003e/dev/null)\n_GIT_DIR := $(shell git rev-parse --git-dir 2\u003e/dev/null)\nIS_WORKTREE :=\nifneq ($(_GIT_COMMON_DIR),$(_GIT_DIR))\n\tIS_WORKTREE := 1\nendif\n\n# When in a worktree, add -a flag to force rebuild all packages\nWORKTREE_FLAGS :=\nifdef IS_WORKTREE\n\tWORKTREE_FLAGS := -a\nendif\n\nGO_TEST_TIMEOUT ?= 300s\nGO_COVERAGE_MIN ?= 80.0\n\n.PHONY: default build intall bundle-api generate-api generate-go-api generate-go-server-api generate-go-client-api generate-ui-api api-smoke docs-reference-check docs-reference-smoke test test-full test-functional test-functional-long test-coverage-go script-timeout-companion-smoke-100 cron-time-work-smoke current-factory-watcher-switch-smoke release-surface-smoke artifact-contract-closeout lint deadcode test-race fmt vet deps deps-tidy dashboard-verify typecheck release ui-deps ui-lint ui-build ui-test ui-test-coverage ui-replay-coverage-check ui-install-playwright ui-storybook ui-test-storybook clean\n\ndefault:\n\t$(MAKE) generate-api\n\t$(MAKE) build\n\t$(MAKE) test\n\t$(MAKE) lint\n\nbuild:\n\t$(GO) build $(WORKTREE_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_PATH)\n\ninstall:\n\t$(GO) build $(WORKTREE_FLAGS) -o $(INSTALL_DIR)/$(BINARY_NAME) $(CMD_PATH)\n\nbundle-api:\n\tnode scripts/run-quiet-api-command.js bundle:rest ./api/openapi-main.yaml ./api/openapi.yaml\n\ngenerate-api: bundle-api generate-go-api generate-ui-api\n\ngenerate-go-api: generate-go-server-api generate-go-client-api\n\ngenerate-go-server-api:\n\t$(GO) generate -tags=interfaces ./pkg/api\n\ngenerate-go-client-api:\n\t$(GO) generate -tags=interfaces ./pkg/generatedclient\n\ngenerate-ui-api:\n\tcd ui \u0026\u0026 node ./node_modules/openapi-typescript/bin/cli.js ../api/openapi.yaml -o src/api/generated/openapi.ts\n\napi-smoke:\n\tnode scripts/run-quiet-api-command.js validate:main ./api/openapi-main.yaml\n\t$(MAKE) generate-api\n\t$(MAKE) generate-api\n\tnode scripts/check-api-generated-drift.js\n\t$(GO) test ./pkg/api -run TestOpenAPIContract_BundledFactoryEventSchemasRemainComplete -count=1 -timeout $(GO_TEST_TIMEOUT)\n\t$(GO) test ./tests/functional/runtime_api -run TestGeneratedAPIIntegrationSmoke_OpenAPIGeneratedServerAndLiveRuntimeStayAligned -count=1 -timeout $(GO_TEST_TIMEOUT)\n\ndocs-reference-check:\n\t$(GO) run ../markdown-linter/cmd/markdown-linter docs/README.md docs/reference\n\ndocs-reference-smoke:\n\t$(MAKE) docs-reference-check\n\t$(GO) test ./tests/functional/smoke -run TestDocsCommandSmoke_ -count=1 -timeout $(GO_TEST_TIMEOUT)\n\ntest:\n\t$(GO) test -short ./... -timeout $(GO_TEST_TIMEOUT)\n\ntest-full:\n\t$(GO) test ./... -timeout $(GO_TEST_TIMEOUT)\n\ntest-functional:\n\t$(GO) run ./cmd/functionallane -jobs $(FUNCTIONAL_DEFAULT_JOBS) -count=1 -timeout $(GO_TEST_TIMEOUT)\n\ntest-functional-long:\n\t$(GO) test -tags=$(FUNCTIONAL_LONG_TAGS) $(FUNCTIONAL_LONG_PACKAGES) -count=1 -timeout $(GO_TEST_TIMEOUT)\n\ntest-coverage-go:\n\t$(GO) run ./cmd/gocoveragecheck -min $(GO_COVERAGE_MIN) -timeout $(GO_TEST_TIMEOUT)\n\nscript-timeout-companion-smoke-100:\n\t$(GO) test -tags=$(FUNCTIONAL_LONG_TAGS) ./tests/functional/providers -run $(SCRIPT_TIMEOUT_COMPANION_SMOKE_TEST) -count=$(SCRIPT_TIMEOUT_COMPANION_SMOKE_COUNT) -timeout $(SCRIPT_TIMEOUT_COMPANION_SMOKE_TIMEOUT)\n\ncron-time-work-smoke:\n\t$(GO) test ./tests/functional/runtime_api -run $(CRON_TIME_WORK_SMOKE_TEST) -count=$(CRON_TIME_WORK_SMOKE_COUNT) -timeout $(CRON_TIME_WORK_SMOKE_TIMEOUT)\n\ncurrent-factory-watcher-switch-smoke:\n\t$(GO) test -tags=$(FUNCTIONAL_LONG_TAGS) ./tests/functional/bootstrap_portability -run $(CURRENT_FACTORY_WATCHER_SWITCH_SMOKE_TEST) -count=$(CURRENT_FACTORY_WATCHER_SWITCH_SMOKE_COUNT) -timeout $(CURRENT_FACTORY_WATCHER_SWITCH_SMOKE_TIMEOUT)\n\nartifact-contract-closeout:\n\t$(GO) test ./pkg/testutil -run TestArtifactContractInventory_ -count=1 -timeout $(GO_TEST_TIMEOUT)\n\t$(MAKE) release-surface-smoke\n\t$(GO) test ./pkg/api ./pkg/config ./pkg/replay ./tests/adhoc ./tests/functional/bootstrap_portability ./tests/functional/runtime_api -run \"Test(AutomatPortabilityFixture_|GeneratedAPIIntegrationSmoke_|LegacyUnaryRetirementSmoke_RuntimeSubmitPathsStayBatchOnly)\" -count=1 -timeout $(GO_TEST_TIMEOUT)\n\t$(GO) test -tags=$(FUNCTIONAL_LONG_TAGS) ./tests/functional/replay_contracts -run \"Test(ReplayEventStreamArtifactSmoke_|WorkerPublicContractSmoke_)\" -count=1 -timeout $(GO_TEST_TIMEOUT)\n\nlint:\n\t$(MAKE) ui-lint\n\t$(GO) vet ./...\n\t$(MAKE) deadcode\n\ndeadcode:\n\t$(GO) run ./cmd/deadcodecheck\n\ndashboard-verify:\n\t$(MAKE) ui-build\n\t$(MAKE) lint\n\t$(MAKE) test\n\ntypecheck:\n\tcd ui \u0026\u0026 $(BUN) run tsc\n\nrelease:\n\t$(GO) run ./cmd/releaseprep -version $(VERSION)\n\nui-deps:\n\tcd ui \u0026\u0026 $(BUN) install --frozen-lockfile\n\nui-lint:\n\tcd ui \u0026\u0026 $(BUN) run lint\n\ntest-race:\n\t$(GO) test ./... -race -timeout 30s -v\n\nfmt:\n\t$(GO) fmt ./...\n\nvet:\n\t$(GO) vet ./...\n\ndeps:\n\t$(GO) mod download\n\ndeps-tidy:\n\t$(GO) mod tidy\n\nui-build:\n\tcd ui \u0026\u0026 $(BUN) run build\n\nui-test:\n\tcd ui \u0026\u0026 $(BUN) run test\n\nui-test-coverage:\n\tcd ui \u0026\u0026 $(BUN) run test:coverage\n\nui-replay-coverage-check:\n\tcd ui \u0026\u0026 $(BUN) run replay:coverage:check\n\nui-install-playwright:\n\tcd ui \u0026\u0026 $(BUN) x playwright install chromium\n\nui-storybook:\n\tcd ui \u0026\u0026 $(BUN) run build-storybook\n\nui-test-storybook:\n\tcd ui \u0026\u0026 $(BUN) run test-storybook\n\nclean:\n\t$(GO) clean ./...\n\trm -rf $(BIN_DIR)\n"
+        },
+        "targetPath": "Makefile",
+        "type": "ROOT_HELPER"
+      },
+      {
+        "content": {
+          "encoding": "utf-8"
+        },
+        "targetPath": "factory/scripts/setup-workspace.py",
+        "type": "SCRIPT"
+      }
+    ]
+  },
+  "workTypes": [
+    {
+      "name": "thoughts",
+      "states": [
+        {
+          "name": "init",
+          "type": "INITIAL"
+        },
+        {
+          "name": "complete",
+          "type": "TERMINAL"
+        },
+        {
+          "name": "failed",
+          "type": "FAILED"
+        }
+      ]
+    },
+    {
+      "name": "task",
+      "states": [
+        {
+          "name": "init",
+          "type": "INITIAL"
+        },
+        {
+          "name": "in-review",
+          "type": "PROCESSING"
+        },
+        {
+          "name": "to-complete",
+          "type": "PROCESSING"
+        },
+        {
+          "name": "complete",
+          "type": "TERMINAL"
+        },
+        {
+          "name": "failed",
+          "type": "FAILED"
+        }
+      ]
+    },
+    {
+      "name": "idea",
+      "states": [
+        {
+          "name": "init",
+          "type": "INITIAL"
+        },
+        {
+          "name": "to-complete",
+          "type": "PROCESSING"
+        },
+        {
+          "name": "complete",
+          "type": "TERMINAL"
+        },
+        {
+          "name": "failed",
+          "type": "FAILED"
+        }
+      ]
+    },
+    {
+      "name": "plan",
+      "states": [
+        {
+          "name": "init",
+          "type": "INITIAL"
+        },
+        {
+          "name": "complete",
+          "type": "TERMINAL"
+        },
+        {
+          "name": "failed",
+          "type": "FAILED"
+        }
+      ]
+    },
+    {
+      "name": "cron-triggers",
+      "states": [
+        {
+          "name": "init",
+          "type": "INITIAL"
+        },
+        {
+          "name": "complete",
+          "type": "TERMINAL"
+        },
+        {
+          "name": "failed",
+          "type": "FAILED"
+        }
+      ]
+    }
+  ],
+  "workers": [
+    {
+      "executorProvider": "SCRIPT_WRAP",
+      "modelProvider": "CODEX",
+      "name": "processor",
+      "skipPermissions": true,
+      "stopToken": "\u003cCOMPLETE\u003e",
+      "type": "MODEL_WORKER"
+    },
+    {
+      "args": [
+        "factory/scripts/setup-workspace.py",
+        "{{ (index .Inputs 0).Name }}"
+      ],
+      "command": "python",
+      "name": "workspace-setup",
+      "type": "SCRIPT_WORKER"
+    }
+  ],
+  "workstations": [
+    {
+      "inputs": [
+        {
+          "state": "init",
+          "workType": "thoughts"
+        }
+      ],
+      "name": "ideafy",
+      "onFailure": [
+        {
+          "state": "failed",
+          "workType": "thoughts"
+        }
+      ],
+      "outputs": [
+        {
+          "state": "complete",
+          "workType": "thoughts"
+        }
+      ],
+      "resources": [
+        {
+          "capacity": 1,
+          "name": "executor-slot"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "processor"
+    },
+    {
+      "inputs": [
+        {
+          "state": "init",
+          "workType": "idea"
+        }
+      ],
+      "name": "plan",
+      "onFailure": [
+        {
+          "state": "failed",
+          "workType": "idea"
+        }
+      ],
+      "onRejection": [
+        {
+          "state": "failed",
+          "workType": "idea"
+        }
+      ],
+      "outputs": [
+        {
+          "state": "to-complete",
+          "workType": "idea"
+        },
+        {
+          "state": "init",
+          "workType": "plan"
+        }
+      ],
+      "resources": [
+        {
+          "capacity": 1,
+          "name": "executor-slot"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "processor"
+    },
+    {
+      "inputs": [
+        {
+          "guards": [
+            {
+              "matchInput": "task",
+              "type": "SAME_NAME"
+            }
+          ],
+          "state": "to-complete",
+          "workType": "idea"
+        },
+        {
+          "state": "to-complete",
+          "workType": "task"
+        }
+      ],
+      "name": "consume",
+      "outputs": [
+        {
+          "state": "complete",
+          "workType": "idea"
+        },
+        {
+          "state": "complete",
+          "workType": "task"
+        }
+      ],
+      "type": "LOGICAL_MOVE",
+      "worker": ""
+    },
+    {
+      "inputs": [
+        {
+          "state": "init",
+          "workType": "plan"
+        }
+      ],
+      "name": "setup-workspace",
+      "onFailure": [
+        {
+          "state": "failed",
+          "workType": "plan"
+        }
+      ],
+      "outputs": [
+        {
+          "state": "complete",
+          "workType": "plan"
+        },
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "workspace-setup"
+    },
+    {
+      "behavior": "REPEATER",
+      "inputs": [
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "name": "process",
+      "onContinue": [
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "onFailure": [
+        {
+          "state": "failed",
+          "workType": "task"
+        }
+      ],
+      "onRejection": [
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "outputs": [
+        {
+          "state": "in-review",
+          "workType": "task"
+        }
+      ],
+      "resources": [
+        {
+          "capacity": 1,
+          "name": "executor-slot"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "processor",
+      "workingDirectory": ".claude/worktrees/{{ (index .Inputs 0).Name }}",
+      "worktree": "{{ (index .Inputs 0).Name }}"
+    },
+    {
+      "inputs": [
+        {
+          "state": "in-review",
+          "workType": "task"
+        }
+      ],
+      "name": "review",
+      "onFailure": [
+        {
+          "state": "failed",
+          "workType": "task"
+        }
+      ],
+      "onRejection": [
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "outputs": [
+        {
+          "state": "to-complete",
+          "workType": "task"
+        }
+      ],
+      "resources": [
+        {
+          "capacity": 1,
+          "name": "executor-slot"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "processor",
+      "workingDirectory": ".claude/worktrees/{{ (index .Inputs 0).Name }}",
+      "worktree": "{{ (index .Inputs 0).Name }}"
+    },
+    {
+      "behavior": "CRON",
+      "cron": {
+        "schedule": "0 */1 * * *"
+      },
+      "inputs": [],
+      "name": "cleaner",
+      "outputs": [
+        {
+          "state": "complete",
+          "workType": "cron-triggers"
+        }
+      ],
+      "resources": [
+        {
+          "capacity": 1,
+          "name": "executor-slot"
+        }
+      ],
+      "type": "MODEL_WORKSTATION",
+      "worker": "processor"
+    },
+    {
+      "guards": [
+        {
+          "maxVisits": 50,
+          "type": "VISIT_COUNT",
+          "workstation": "process"
+        }
+      ],
+      "inputs": [
+        {
+          "state": "init",
+          "workType": "task"
+        }
+      ],
+      "name": "executor-loop-breaker",
+      "outputs": [
+        {
+          "state": "failed",
+          "workType": "task"
+        }
+      ],
+      "type": "LOGICAL_MOVE",
+      "worker": ""
+    },
+    {
+      "guards": [
+        {
+          "maxVisits": 10,
+          "type": "VISIT_COUNT",
+          "workstation": "review"
+        }
+      ],
+      "inputs": [
+        {
+          "state": "in-review",
+          "workType": "task"
+        }
+      ],
+      "name": "review-loop-breaker",
+      "outputs": [
+        {
+          "state": "failed",
+          "workType": "task"
+        }
+      ],
+      "type": "LOGICAL_MOVE",
+      "worker": ""
+    }
+  ]
+}
